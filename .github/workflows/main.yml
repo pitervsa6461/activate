@@ -18,18 +18,23 @@ jobs:
       - name: Start cycle
         run: echo "=== Starting new 4h10m cycle ==="
 
-      # 🔹 Find and start existing Codespace dynamically
+      # 🔹 Find and start Codespace containing 'automatic-space-train'
       - name: Start existing Codespace if not running
         env:
           CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
-          CODESPACE_SEARCH: "automatic-space-train"   # wpisz unikalną część nazwy Codespace
+          CODESPACE_SEARCH: "automatic-space-train"   # unikalna część nazwy Codespace
         run: |
           echo "Fetching list of Codespaces..."
           CODESPACES=$(curl -s -H "Authorization: token $CODESPACE_PAT" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/user/codespaces)
 
-          # Wybierz Codespace, który zawiera nazwę SEARCH
+          if [ -z "$CODESPACES" ] || [ "$CODESPACES" = "null" ]; then
+            echo "No Codespaces found or token invalid."
+            exit 1
+          fi
+
+          # Wybierz Codespace, który zawiera CODESPACE_SEARCH
           CODESPACE_NAME=$(echo "$CODESPACES" | jq -r ".codespaces[] | select(.name | test(\"$CODESPACE_SEARCH\")) | .name")
 
           if [ -z "$CODESPACE_NAME" ]; then
