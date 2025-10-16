@@ -18,18 +18,29 @@ jobs:
       - name: Start cycle
         run: echo "=== Starting new 4h10m cycle ==="
 
-      # 🔹 Check and start existing Codespace
+      # 🔹 Find and start existing Codespace dynamically
       - name: Start existing Codespace if not running
         env:
           CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
-          CODESPACE_NAME: "automatic-space-train-69x45ggg5vxgh4qp4"   # ← wpisz swój Codespace name
+          CODESPACE_SEARCH: "automatic-space-train"   # wpisz unikalną część nazwy Codespace
         run: |
-          echo "Checking Codespace status for: $CODESPACE_NAME"
-          
-          STATUS=$(curl -s -H "Authorization: token $CODESPACE_PAT" \
+          echo "Fetching list of Codespaces..."
+          CODESPACES=$(curl -s -H "Authorization: token $CODESPACE_PAT" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/user/codespaces/$CODESPACE_NAME | jq -r '.state')
+            https://api.github.com/user/codespaces)
 
+          # Wybierz Codespace, który zawiera nazwę SEARCH
+          CODESPACE_NAME=$(echo "$CODESPACES" | jq -r ".codespaces[] | select(.name | test(\"$CODESPACE_SEARCH\")) | .name")
+
+          if [ -z "$CODESPACE_NAME" ]; then
+            echo "No Codespace found matching '$CODESPACE_SEARCH'."
+            exit 1
+          fi
+
+          echo "Found Codespace: $CODESPACE_NAME"
+
+          # Sprawdź status
+          STATUS=$(echo "$CODESPACES" | jq -r ".codespaces[] | select(.name==\"$CODESPACE_NAME\") | .state")
           echo "Current status: $STATUS"
 
           if [ "$STATUS" != "Available" ]; then
