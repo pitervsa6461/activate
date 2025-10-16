@@ -22,7 +22,7 @@ jobs:
       - name: Start existing Codespace
         env:
           CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
-          CODESPACE_NAME: "myuser-main-xyz123"   # ← wpisz swój Codespace name
+          CODESPACE_NAME: "automatic-space-train-69x45ggg5vxgh4qp4"   # ← wpisz swój Codespace name
         run: |
           echo "Starting Codespace: $CODESPACE_NAME"
           curl -X POST \
