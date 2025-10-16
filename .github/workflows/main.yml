@@ -18,46 +18,18 @@ jobs:
       - name: Start cycle
         run: echo "=== Starting new 4h10m cycle ==="
 
-      # 🔹 Find and start Codespace containing 'automatic-space-train'
-      - name: Start existing Codespace if not running
+      # 🔹 Start istniejącego Codespace bez pobierania listy
+      - name: Start existing Codespace
         env:
           CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
-          CODESPACE_SEARCH: "automatic-space-train"   # unikalna część nazwy Codespace
+          CODESPACE_NAME: "automatic-space-train-69x45ggg5vxgh4qp4"   # ← Twój Codespace
         run: |
-          echo "Fetching list of Codespaces..."
-          CODESPACES=$(curl -s -H "Authorization: token $CODESPACE_PAT" \
+          echo "Starting Codespace: $CODESPACE_NAME"
+          RESPONSE=$(curl -s -w "\nHTTP status: %{http_code}\n" -X POST \
+            -H "Authorization: token $CODESPACE_PAT" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/user/codespaces)
-
-          if [ -z "$CODESPACES" ] || [ "$CODESPACES" = "null" ]; then
-            echo "No Codespaces found or token invalid."
-            exit 1
-          fi
-
-          # Wybierz Codespace, który zawiera CODESPACE_SEARCH
-          CODESPACE_NAME=$(echo "$CODESPACES" | jq -r ".codespaces[] | select(.name | test(\"$CODESPACE_SEARCH\")) | .name")
-
-          if [ -z "$CODESPACE_NAME" ]; then
-            echo "No Codespace found matching '$CODESPACE_SEARCH'."
-            exit 1
-          fi
-
-          echo "Found Codespace: $CODESPACE_NAME"
-
-          # Sprawdź status
-          STATUS=$(echo "$CODESPACES" | jq -r ".codespaces[] | select(.name==\"$CODESPACE_NAME\") | .state")
-          echo "Current status: $STATUS"
-
-          if [ "$STATUS" != "Available" ]; then
-            echo "Codespace already running or provisioning."
-          else
-            echo "Starting Codespace..."
-            RESPONSE=$(curl -s -w "\nHTTP status: %{http_code}\n" -X POST \
-              -H "Authorization: token $CODESPACE_PAT" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/user/codespaces/$CODESPACE_NAME/start)
-            echo "$RESPONSE"
-          fi
+            https://api.github.com/user/codespaces/$CODESPACE_NAME/start)
+          echo "$RESPONSE"
 
       # 🔹 Wait 4h10m before next cycle
       - name: Wait 4h10m before next cycle
