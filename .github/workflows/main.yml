@@ -1,0 +1,52 @@
+name: Auto Codespace Runner
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [start-next-cycle]
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  codespace-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # max 6h
+
+    steps:
+      - name: Start cycle
+        run: echo "=== Starting new 4h10m cycle ==="
+
+      # 🔹 Start istniejącego Codespace’a przez API
+      - name: Start existing Codespace
+        env:
+          CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
+          CODESPACE_NAME: "myuser-main-xyz123"   # ← wpisz swój Codespace name
+        run: |
+          echo "Starting Codespace: $CODESPACE_NAME"
+          curl -X POST \
+            -H "Authorization: token $CODESPACE_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user/codespaces/$CODESPACE_NAME/start
+
+      - name: Wait 4h10m before next cycle
+        run: |
+          echo "Sleeping for 4h10m..."
+          sleep $((4*3600 + 10*60))
+
+      # 🔹 Samowywołanie (kolejny cykl)
+      - name: Trigger next cycle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Triggering next cycle..."
+          curl -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/$REPO/dispatches \
+            -d '{"event_type": "start-next-cycle"}'
+
+      - name: Done
+        run: echo "=== Cycle complete ==="
