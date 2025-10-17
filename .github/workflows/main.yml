@@ -1,118 +1,39 @@
-name: Infinite Codespace Scheduler (with SSH activation)
+name: Start Codespace with Interactive SSH
 
 on:
   workflow_dispatch:
-  repository_dispatch:
-    types: [start-next-cycle]
-
-permissions:
-  contents: read
-  actions: write
 
 jobs:
-  infinite-cycle:
+  start-codespace:
     runs-on: ubuntu-latest
-    timeout-minutes: 370  # 4h10m + zapas
-
-    env:
-      CODESPACE_NAME: "automatic-space-train-69x45ggg5vxgh4qp4"  # <- zmień jeśli trzeba
 
     steps:
-      - name: 🟢 Info
-        run: |
-          echo "=== Infinite Codespace Scheduler ==="
-          echo "Codespace: $CODESPACE_NAME"
-          echo "Start time: $(date)"
-
-      - name: 🚀 Start Codespace via API
+      - name: Start Codespace
         env:
           CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
+          CODESPACE_NAME: "automatic-space-train-69x45ggg5vxgh4qp4"
         run: |
-          if [ -z "$CODESPACE_PAT" ]; then
-            echo "❌ CODESPACE_PAT secret is missing!"
-            exit 1
-          fi
-
-          echo "Requesting start for codespace: $CODESPACE_NAME"
-          HTTP_CODE=$(curl -s -o /tmp/cs_start_resp.json -w "%{http_code}" -X POST \
+          echo "Starting Codespace: $CODESPACE_NAME"
+          curl -s -X POST \
             -H "Authorization: token $CODESPACE_PAT" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/user/codespaces/$CODESPACE_NAME/start")
+            https://api.github.com/user/codespaces/$CODESPACE_NAME/start
 
-          echo "Start API HTTP code: $HTTP_CODE"
-          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "202" ]; then
-            echo "❌ Failed to request Codespace start. Response:"
-            cat /tmp/cs_start_resp.json || true
-            exit 1
-          fi
-
-          echo "✅ Start requested successfully."
-
-      - name: 🔎 Wait for Codespace state to be 'available' (max 2 min)
+      - name: Wait until Codespace is Available
         env:
           CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
+          CODESPACE_NAME: "automatic-space-train-69x45ggg5vxgh4qp4"
         run: |
-          echo "Polling Codespace state..."
-          END=$((SECONDS + 120))
-          while [ $SECONDS -lt $END ]; do
-            RESP=$(curl -s -H "Authorization: token $CODESPACE_PAT" \
+          STATE=""
+          while [ "$STATE" != "Available" ]; do
+            STATE=$(curl -s -H "Authorization: token $CODESPACE_PAT" \
               -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/user/codespaces/$CODESPACE_NAME")
-            state=$(echo "$RESP" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('state',''))")
-            echo "state=$state"
-            if [ "$state" = "Available" ] || [ "$state" = "available" ] || [ "$state" = "Active" ]; then
-              echo "Codespace is available/active."
-              break
-            fi
+              https://api.github.com/user/codespaces/$CODESPACE_NAME | jq -r '.state')
+            echo "Codespace state: $STATE"
             sleep 5
           done
 
-      - name: 🔐 Fetch SSH connection string and activate Codespace (open ports)
-        env:
-          CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
+      - name: Open Interactive SSH
         run: |
-          echo "Fetching SSH connection string..."
-          RESP=$(curl -s -H "Authorization: token $CODESPACE_PAT" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/user/codespaces/$CODESPACE_NAME")
-
-          SSH_CMD=$(echo "$RESP" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('ssh_connection_string') or '')")
-          if [ -z "$SSH_CMD" ]; then
-            echo "⚠️ Nie udało się pobrać ssh_connection_string. Output:"
-            echo "$RESP"
-            exit 0   # nie przerywamy całkowicie — Codespace może być aktywny mimo braku stringa
-          fi
-
-          echo "SSH command: $SSH_CMD"
-          echo "Running SSH to activate Codespace (non-interactive)..."
-          # Uruchomienie bez znanych hostów, uruchomienie w tle i wysłanie prostego polecenia zdalnego.
-          # Użyjemy eval żeby wykonać pełny polecenie zwrócone przez API (może zawierać -i / -p itp).
-          set -x
-          eval "$SSH_CMD" "echo 'Codespace activated at $(date)'" || {
-            echo "⚠️ SSH activation failed (but Codespace may still be OK)."
-          }
-          set +x
-          echo "✅ SSH activation attempted."
-
-      - name: 🕒 Wait 4h10m (14999s)
-        run: |
-          echo "Sleeping for 4h10m..."
-          sleep $((4*3600 + 10*60))
-          echo "Woke up at $(date)"
-
-      - name: 🔁 Trigger next cycle (repository_dispatch)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          echo "Triggering next cycle for repo: $REPO"
-          curl -s -X POST \
-            -H "Authorization: token $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/dispatches" \
-            -d '{"event_type":"start-next-cycle"}'
-          echo "✅ Next cycle requested."
-
-      - name: 🏁 Finish
-        run: |
-          echo "=== Cycle finished at $(date) ==="
+          echo "NOTE: This step requires an interactive terminal."
+          echo "Run locally: gh codespace ssh -c automatic-space-train-69x45ggg5vxgh4qp4"
