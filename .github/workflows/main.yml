@@ -1,54 +1,44 @@
-name: Auto Codespace Runner
+name: Infinite 4h10m Scheduler
 
 on:
   workflow_dispatch:
   repository_dispatch:
-    types: [start-next-cycle]
+    types: [start-next-scheduled]
 
 permissions:
   contents: read
   actions: write
 
 jobs:
-  codespace-cycle:
+  schedule-chain:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # max 6h
 
     steps:
-      - name: Start cycle
-        run: echo "=== Starting new 4h10m cycle ==="
+      - name: 🕓 Start new scheduled cycle
+        run: echo "Starting new scheduled cycle at $(date)"
 
-      # 🔹 Start istniejącego Codespace bez pobierania listy
-      - name: Start existing Codespace
-        env:
-          CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
-          CODESPACE_NAME: "automatic-space-train-69x45ggg5vxgh4qp4"   # ← Twój Codespace
+      # 🔹 (Tutaj możesz uruchomić np. Codespace, Wings itd.)
+      - name: 🧠 Example action
         run: |
-          echo "Starting Codespace: $CODESPACE_NAME"
-          RESPONSE=$(curl -s -w "\nHTTP status: %{http_code}\n" -X POST \
-            -H "Authorization: token $CODESPACE_PAT" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/user/codespaces/$CODESPACE_NAME/start)
-          echo "$RESPONSE"
+          echo "Doing work..."
+          sleep 10
+          echo "Work finished at $(date)"
 
-      # 🔹 Wait 4h10m before next cycle
-      - name: Wait 4h10m before next cycle
-        run: |
-          echo "Sleeping for 4h10m..."
-          sleep $((4*3600 + 10*60))
-
-      # 🔹 Trigger next cycle
-      - name: Trigger next cycle
+      # 🔹 Utwórz nowy „scheduled” po 4h10m
+      - name: ⏱ Schedule next workflow in 4h10m
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          echo "Triggering next cycle..."
+          echo "Waiting 4h10m before scheduling next..."
+          sleep $((4*3600 + 10*60))
+          echo "Triggering next scheduled run..."
           curl -X POST \
             -H "Authorization: token $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/$REPO/dispatches \
-            -d '{"event_type": "start-next-cycle"}'
+            -d '{"event_type": "start-next-scheduled"}'
+          echo "✅ Next scheduled run created at $(date)"
 
-      - name: Done
-        run: echo "=== Cycle complete ==="
+      - name: 🏁 Done
+        run: echo "Current scheduled workflow finished at $(date)"
